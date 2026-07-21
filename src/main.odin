@@ -3,6 +3,7 @@ package main
 import rl "vendor:raylib"
 import world "world"
 import geo "geo"
+import render "render"
 
 main :: proc() {
     rl.InitWindow(1280, 720, "Raycaster")
@@ -11,6 +12,8 @@ main :: proc() {
 
 
     player := world.NewPlayer()
+
+    game_map := world.NewMap()
 
     for !rl.WindowShouldClose() {
         dt := rl.GetFrameTime()
@@ -42,12 +45,14 @@ main :: proc() {
 
         rl.ClearBackground(rl.BLACK)
 
+        render.DrawMap(&game_map)
+
         rl.DrawRectangle(
             i32(player.position.x),
             i32(player.position.y),
             i32(player.size),
             i32(player.size),
-            rl.WHITE,
+            rl.GREEN,
         )
 
         rl.EndDrawing()
