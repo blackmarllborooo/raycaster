@@ -1,15 +1,16 @@
 package world
 
+import "../geo"
+
 Player :: struct {
-    x, y: f32,
+    position: geo.Vec2,
     size: f32,
     speed: f32,
 }
 
 NewPlayer :: proc() -> Player {
     return Player{
-        x = 300,
-        y = 200,
+        position = geo.Vec2{300, 200},
         size = 40,
         speed = 300, // pixels per second
     }
