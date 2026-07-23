@@ -1,5 +1,6 @@
 package world
 
+import "core:math"
 import "../geo"
 
 Player :: struct {
@@ -7,11 +8,12 @@ Player :: struct {
 
     direction: geo.Vec2,
     camera_plane: geo.Vec2,
-    
+
     size: f32,
-    
+
     speed: f32,
-    rotation_speed: f32,
+    rotation_speed: f32,    // radians/sec, keyboard fallback (arrow keys)
+    mouse_sensitivity: f32, // radians per pixel of mouse movement
 }
 
 NewPlayer :: proc() -> Player {
@@ -22,6 +24,7 @@ NewPlayer :: proc() -> Player {
         size = 40,
         speed = 300, // pixels per second
         rotation_speed = 3, // radians per second
+        mouse_sensitivity = 0.0025,
     }
 }
 
@@ -30,19 +33,22 @@ CollisionRadius :: proc(p: ^Player) -> f32 {
 }
 
 UpdatePlayer :: proc(p: ^Player, i: Input, game_map: ^Map, dt: f32) {
-    movement := geo.Vec2{0,0}
+    // Movement is relative to where the player is facing, not world axes,
+    // so strafing always moves sideways from the player's own point of view.
+    right := Rotate(p.direction, math.PI / 2)
 
-    if i.up {
-        movement.y -= 1
+    movement := geo.Vec2{0, 0}
+    if i.forward {
+        movement = geo.Add(movement, p.direction)
     }
-    if i.down {
-        movement.y += 1
+    if i.backward {
+        movement = geo.Sub(movement, p.direction)
     }
-    if i.left {
-        movement.x -= 1
+    if i.strafe_right {
+        movement = geo.Add(movement, right)
     }
-    if i.right {
-        movement.x += 1
+    if i.strafe_left {
+        movement = geo.Sub(movement, right)
     }
 
     movement = geo.Normalize(movement)
@@ -60,14 +66,14 @@ UpdatePlayer :: proc(p: ^Player, i: Input, game_map: ^Map, dt: f32) {
         p.position.y = next_y
     }
 
-    rotation := f32(0)
+    rotation := i.mouse_dx * p.mouse_sensitivity
     if i.rotate_left {
         rotation -= p.rotation_speed * dt
     }
     if i.rotate_right {
         rotation += p.rotation_speed * dt
     }
-    
+
     p.direction = Rotate(p.direction, rotation)
     p.camera_plane = Rotate(p.camera_plane, rotation)
 }

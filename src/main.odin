@@ -7,6 +7,7 @@ import render "render"
 main :: proc() {
     rl.InitWindow(render.ScreenWidth, render.ScreenHeight, "Raycaster")
     rl.SetTargetFPS(60)
+    rl.DisableCursor() // lock and hide the cursor for FPS-style mouse look
     defer rl.CloseWindow()
 
 

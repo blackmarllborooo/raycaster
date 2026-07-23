@@ -26,6 +26,10 @@ Add :: proc(a, b: Vec2) -> Vec2 {
     return Vec2{a.x + b.x, a.y + b.y}
 }
 
+Sub :: proc(a, b: Vec2) -> Vec2 {
+    return Vec2{a.x - b.x, a.y - b.y}
+}
+
 Scale :: proc(v: Vec2, s: f32) -> Vec2 {
     return Vec2{v.x * s, v.y * s}
 }
