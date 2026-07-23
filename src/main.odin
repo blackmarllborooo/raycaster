@@ -10,6 +10,9 @@ main :: proc() {
     rl.DisableCursor() // lock and hide the cursor for FPS-style mouse look
     defer rl.CloseWindow()
 
+    render.LoadTextures()
+    defer render.UnloadTextures()
+
 
     player := world.NewPlayer()
     game_map := world.NewMap()

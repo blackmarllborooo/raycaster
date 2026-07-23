@@ -1,5 +1,6 @@
 package world
 
+import "core:math"
 import geo "../geo"
 
 // A very large number used as delta_dist when a ray direction component is 0
@@ -32,6 +33,10 @@ Ray :: struct {
     // This is fisheye-corrected and should be used for wall height, not the
     // raw euclidean distance.
     perp_wall_dist: f32,
+
+    // Where the ray hit the wall face, as a fraction (0..1) along that face.
+    // Used as the texture U coordinate.
+    wall_x: f32,
 }
 
 // CastRay fires a single ray from the player's position in the given
@@ -91,9 +96,12 @@ CastRay :: proc(p: ^Player, game_map: ^Map, direction: geo.Vec2) -> Ray {
 
     if ray.side == 0 {
         ray.perp_wall_dist = ray.side_dist_x - ray.delta_dist_x
+        ray.wall_x = pos_y + ray.perp_wall_dist * ray.direction.y
     } else {
         ray.perp_wall_dist = ray.side_dist_y - ray.delta_dist_y
+        ray.wall_x = pos_x + ray.perp_wall_dist * ray.direction.x
     }
+    ray.wall_x -= math.floor(ray.wall_x)
 
     return ray
 }
