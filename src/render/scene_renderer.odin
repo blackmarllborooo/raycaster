@@ -13,6 +13,10 @@ MinWallDist :: f32(0.0001)
 FogDistance :: f32(8)
 MinBrightness :: f32(0.2)
 
+// Per-column wall distance (in tiles) from the last DrawScene call, used by
+// the sprite renderer to occlude sprites standing behind walls.
+ZBuffer: [ScreenWidth]f32
+
 // DrawScene casts one ray per screen column and draws the resulting first-
 // person 3D view (floor, ceiling and shaded wall slices).
 DrawScene :: proc(p: ^world.Player, game_map: ^world.Map) {
@@ -29,6 +33,8 @@ DrawScene :: proc(p: ^world.Player, game_map: ^world.Map) {
         if dist < MinWallDist {
             dist = MinWallDist
         }
+
+        ZBuffer[x] = dist
 
         line_height := f32(ScreenHeight) / dist
 

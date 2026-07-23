@@ -36,3 +36,12 @@ DrawMap :: proc(game_map: ^world.Map, scale: f32 = 1, offset: geo.Vec2 = geo.Vec
         }
     }
 }
+
+DrawSpriteMarkers :: proc(sprites: []world.Sprite, scale: f32 = 1, offset: geo.Vec2 = geo.Vec2{0, 0}) {
+    radius := max(4 * scale, 2)
+    for s in sprites {
+        cx := offset.x + s.position.x * scale
+        cy := offset.y + s.position.y * scale
+        rl.DrawCircle(i32(cx), i32(cy), radius, rl.ORANGE)
+    }
+}

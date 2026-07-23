@@ -10,7 +10,7 @@ MinimapBorder :: f32(4)
 
 // DrawMinimap draws a small top-down overview of the map and player in the
 // corner of the screen, on top of the 3D scene.
-DrawMinimap :: proc(p: ^world.Player, game_map: ^world.Map) {
+DrawMinimap :: proc(p: ^world.Player, game_map: ^world.Map, sprites: []world.Sprite) {
     offset := geo.Vec2{MinimapPadding, MinimapPadding}
     map_w := f32(world.MapWidth) * world.TileSize * MinimapScale
     map_h := f32(world.MapHeight) * world.TileSize * MinimapScale
@@ -24,6 +24,7 @@ DrawMinimap :: proc(p: ^world.Player, game_map: ^world.Map) {
     )
 
     DrawMap(game_map, MinimapScale, offset)
+    DrawSpriteMarkers(sprites, MinimapScale, offset)
     DrawPlayer(p, MinimapScale, offset)
 
     rl.DrawRectangleLines(
