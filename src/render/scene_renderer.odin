@@ -4,9 +4,6 @@ import rl "vendor:raylib"
 import geo "../geo"
 import world "../world"
 
-CeilingColor :: rl.Color{40, 40, 60, 255}
-FloorColor :: rl.Color{55, 55, 55, 255}
-
 MinWallDist :: f32(0.0001)
 
 // Walls beyond this distance (in tiles) are rendered at minimum brightness.
@@ -20,8 +17,7 @@ ZBuffer: [ScreenWidth]f32
 // DrawScene casts one ray per screen column and draws the resulting first-
 // person 3D view (floor, ceiling and shaded wall slices).
 DrawScene :: proc(p: ^world.Player, game_map: ^world.Map) {
-    rl.DrawRectangle(0, 0, ScreenWidth, ScreenHeight / 2, CeilingColor)
-    rl.DrawRectangle(0, ScreenHeight / 2, ScreenWidth, ScreenHeight / 2, FloorColor)
+    DrawFloorCeiling(p)
 
     for x in 0 ..< ScreenWidth {
         camera_x := 2 * f32(x) / f32(ScreenWidth) - 1

@@ -14,6 +14,8 @@ main :: proc() {
     defer render.UnloadTextures()
     render.LoadSpriteTextures()
     defer render.UnloadSpriteTextures()
+    render.LoadFloorTextures()
+    defer render.UnloadFloorTextures()
 
     player := world.NewPlayer()
     game_map := world.NewMap()
