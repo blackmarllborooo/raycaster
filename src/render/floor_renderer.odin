@@ -38,51 +38,78 @@ DrawFloorCeiling :: proc(p: ^world.Player) {
     ray_dir_x1 := p.direction.x + p.camera_plane.x
     ray_dir_y1 := p.direction.y + p.camera_plane.y
 
-    // Vertical camera position: half the screen, i.e. eye at half tile height.
-    pos_z := f32(0.5) * f32(ScreenHeight)
+    horizon :: ScreenHeight / 2
 
-    for y in ScreenHeight / 2 ..< ScreenHeight {
-        p_row := y - ScreenHeight / 2
-        if p_row == 0 {
+    // Vertical camera positions (in screen units). The floor is EyeHeight
+    // below the camera; the ceiling is (RoomHeight - EyeHeight) above it, so
+    // the two are cast independently and the ceiling can sit higher than a
+    // simple mirror of the floor.
+    floor_pos_z := EyeHeight * f32(ScreenHeight)
+    ceil_pos_z := (RoomHeight - EyeHeight) * f32(ScreenHeight)
+
+    // Floor fills the bottom half; ceiling the top half. Each screen row is
+    // p_row pixels away from the horizon and samples the world at its own
+    // distance.
+    castHalf(pos_x, pos_y, ray_dir_x0, ray_dir_y0, ray_dir_x1, ray_dir_y1, floor_pos_z, false)
+    castHalf(pos_x, pos_y, ray_dir_x0, ray_dir_y0, ray_dir_x1, ray_dir_y1, ceil_pos_z, true)
+
+    rl.UpdateTexture(FrameTexture, &FrameBuffer[0])
+    rl.DrawTexture(FrameTexture, 0, 0, rl.WHITE)
+}
+
+// castHalf casts either the floor (ceiling=false) or the ceiling
+// (ceiling=true) into the framebuffer. horizon is the shared eye-level row.
+@(private = "file")
+castHalf :: proc(
+    pos_x, pos_y: f32,
+    ray_dir_x0, ray_dir_y0, ray_dir_x1, ray_dir_y1: f32,
+    pos_z: f32,
+    ceiling: bool,
+) {
+    horizon :: ScreenHeight / 2
+
+    // Iterate over every row of this half so the whole framebuffer is
+    // rewritten (no stale pixels left at the horizon or screen edge).
+    y_start := ceiling ? 0 : horizon
+    y_end := ceiling ? horizon : ScreenHeight
+
+    for y in y_start ..< y_end {
+        p_row := ceiling ? horizon - y : y - horizon
+        if p_row < 1 {
             p_row = 1 // avoid divide-by-zero on the exact horizon row
         }
 
         row_distance := pos_z / f32(p_row)
 
-        // How far the world point moves per screen column at this row.
         step_x := row_distance * (ray_dir_x1 - ray_dir_x0) / f32(ScreenWidth)
         step_y := row_distance * (ray_dir_y1 - ray_dir_y0) / f32(ScreenWidth)
 
-        floor_x := pos_x + row_distance * ray_dir_x0
-        floor_y := pos_y + row_distance * ray_dir_y0
+        world_x := pos_x + row_distance * ray_dir_x0
+        world_y := pos_y + row_distance * ray_dir_y0
 
         brightness := clamp(1 - row_distance / FogDistance, MinBrightness, 1)
 
-        floor_row := y * ScreenWidth
-        ceil_row := (ScreenHeight - y - 1) * ScreenWidth
+        base := y * ScreenWidth
 
         for x in 0 ..< ScreenWidth {
             // Fractional part of the world position gives the texture UV;
             // TextureSize is a power of two so a mask does the wrap.
-            tx := int(f32(TextureSize) * (floor_x - f32(int(floor_x)))) & (TextureSize - 1)
-            ty := int(f32(TextureSize) * (floor_y - f32(int(floor_y)))) & (TextureSize - 1)
-            if floor_x < 0 {
+            tx := int(f32(TextureSize) * (world_x - f32(int(world_x)))) & (TextureSize - 1)
+            ty := int(f32(TextureSize) * (world_y - f32(int(world_y)))) & (TextureSize - 1)
+            if world_x < 0 {
                 tx = (TextureSize - 1) - tx
             }
-            if floor_y < 0 {
+            if world_y < 0 {
                 ty = (TextureSize - 1) - ty
             }
 
-            floor_x += step_x
-            floor_y += step_y
+            world_x += step_x
+            world_y += step_y
 
-            FrameBuffer[floor_row + x] = shade(FloorPixels[ty][tx], brightness)
-            FrameBuffer[ceil_row + x] = shade(CeilPixels[ty][tx], brightness)
+            texel := ceiling ? CeilPixels[ty][tx] : FloorPixels[ty][tx]
+            FrameBuffer[base + x] = shade(texel, brightness)
         }
     }
-
-    rl.UpdateTexture(FrameTexture, &FrameBuffer[0])
-    rl.DrawTexture(FrameTexture, 0, 0, rl.WHITE)
 }
 
 @(private = "file")

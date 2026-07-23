@@ -32,12 +32,12 @@ DrawScene :: proc(p: ^world.Player, game_map: ^world.Map) {
 
         ZBuffer[x] = dist
 
-        line_height := f32(ScreenHeight) / dist
-
-        // Unclamped extents: when the wall is close, this can go well
-        // outside the screen (negative top, bottom past ScreenHeight).
-        draw_start_f := f32(ScreenHeight) / 2 - line_height / 2
-        draw_end_f := f32(ScreenHeight) / 2 + line_height / 2
+        // The wall spans from the floor (z=0) up to the ceiling
+        // (z=RoomHeight). Project both edges relative to the horizon; when
+        // the wall is close these go well outside the screen.
+        draw_end_f := Horizon + EyeHeight * f32(ScreenHeight) / dist
+        draw_start_f := Horizon - (RoomHeight - EyeHeight) * f32(ScreenHeight) / dist
+        wall_px_height := draw_end_f - draw_start_f
 
         draw_start := draw_start_f < 0 ? 0 : draw_start_f
         draw_end := draw_end_f > f32(ScreenHeight) ? f32(ScreenHeight) : draw_end_f
@@ -46,8 +46,11 @@ DrawScene :: proc(p: ^world.Player, game_map: ^world.Map) {
         // screen, at its true scale — otherwise clamping draw_start/draw_end
         // above would squash the whole texture into whatever's left,
         // distorting bricks when standing close to a wall.
-        tex_top := (draw_start - draw_start_f) / line_height * f32(TextureSize)
-        tex_bottom := (draw_end - draw_start_f) / line_height * f32(TextureSize)
+        // Multiply by RoomHeight so the texture tiles once per tile of wall
+        // height instead of stretching across the whole (taller) wall. The
+        // wall textures are loaded with REPEAT wrapping for this.
+        tex_top := (draw_start - draw_start_f) / wall_px_height * f32(TextureSize) * RoomHeight
+        tex_bottom := (draw_end - draw_start_f) / wall_px_height * f32(TextureSize) * RoomHeight
 
         // Pick the texture column, flipping it on some sides so the brick
         // pattern isn't mirrored depending on which direction you approach

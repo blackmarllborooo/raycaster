@@ -19,6 +19,12 @@ LoadTextures :: proc() {
     WallTextures[.WallStone] = rl.LoadTextureFromImage(stone)
     WallTextures[.WallWood] = rl.LoadTextureFromImage(wood)
 
+    // Repeat wrapping lets walls taller than one tile tile their texture
+    // vertically instead of stretching it (see scene_renderer).
+    for t in ([]world.Tile{.WallBrick, .WallStone, .WallWood}) {
+        rl.SetTextureWrap(WallTextures[t], .REPEAT)
+    }
+
     rl.UnloadImage(brick)
     rl.UnloadImage(stone)
     rl.UnloadImage(wood)
