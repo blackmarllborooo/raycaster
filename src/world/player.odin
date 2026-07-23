@@ -32,7 +32,7 @@ CollisionRadius :: proc(p: ^Player) -> f32 {
     return p.size / 2
 }
 
-UpdatePlayer :: proc(p: ^Player, i: Input, game_map: ^Map, dt: f32) {
+UpdatePlayer :: proc(p: ^Player, i: Input, game_map: ^Map, sprites: []Sprite, dt: f32) {
     // Movement is relative to where the player is facing, not world axes,
     // so strafing always moves sideways from the player's own point of view.
     right := Rotate(p.direction, math.PI / 2)
@@ -57,12 +57,14 @@ UpdatePlayer :: proc(p: ^Player, i: Input, game_map: ^Map, dt: f32) {
     // Move along each axis independently so the player slides along walls
     // instead of stopping dead on diagonal movement into a corner.
     next_x := p.position.x + movement.x * p.speed * dt
-    if !IsBlocked(game_map, geo.Vec2{next_x, p.position.y}, radius) {
+    try_x := geo.Vec2{next_x, p.position.y}
+    if !IsBlocked(game_map, try_x, radius) && !SpriteBlocks(sprites, try_x, radius) {
         p.position.x = next_x
     }
 
     next_y := p.position.y + movement.y * p.speed * dt
-    if !IsBlocked(game_map, geo.Vec2{p.position.x, next_y}, radius) {
+    try_y := geo.Vec2{p.position.x, next_y}
+    if !IsBlocked(game_map, try_y, radius) && !SpriteBlocks(sprites, try_y, radius) {
         p.position.y = next_y
     }
 
