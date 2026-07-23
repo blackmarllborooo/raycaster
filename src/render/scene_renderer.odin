@@ -66,6 +66,6 @@ DrawScene :: proc(p: ^world.Player, game_map: ^world.Map) {
 
         source := rl.Rectangle{f32(tex_x), tex_top, 1, tex_bottom - tex_top}
         dest := rl.Rectangle{f32(x), draw_start, 1, draw_end - draw_start}
-        rl.DrawTexturePro(WallTexture, source, dest, rl.Vector2{0, 0}, 0, tint)
+        rl.DrawTexturePro(TextureForTile(ray.tile), source, dest, rl.Vector2{0, 0}, 0, tint)
     }
 }

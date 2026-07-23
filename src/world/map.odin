@@ -9,7 +9,13 @@ MapHeight :: 10
 
 Tile :: enum u8 {
 	Empty,
-	Wall,
+	WallBrick,
+	WallStone,
+	WallWood,
+}
+
+IsWall :: proc(t: Tile) -> bool {
+	return t != .Empty
 }
 
 
@@ -24,11 +30,11 @@ NewMap :: proc() -> Map {
 		for x in 0..<MapWidth {
 
 			// if the tile is on the border of the map, make it a wall
-			if x == 0 || 
+			if x == 0 ||
 			   x == MapWidth-1 ||
-			   y == 0 || 
+			   y == 0 ||
 			   y == MapHeight-1 {
-				game_map.tiles[y][x] = .Wall
+				game_map.tiles[y][x] = .WallStone
 			} else {
 				game_map.tiles[y][x] = .Empty
 			}
@@ -36,9 +42,12 @@ NewMap :: proc() -> Map {
 	}
 
 	// Add some walls in the middle of the map
-	game_map.tiles[5][4] = .Wall
-	game_map.tiles[5][5] = .Wall
-	game_map.tiles[5][6] = .Wall
+	game_map.tiles[5][4] = .WallBrick
+	game_map.tiles[5][5] = .WallBrick
+	game_map.tiles[5][6] = .WallBrick
+
+	game_map.tiles[2][2] = .WallWood
+	game_map.tiles[3][2] = .WallWood
 
 	return game_map
 }
@@ -60,7 +69,7 @@ IsBlocked :: proc(game_map: ^Map, pos: geo.Vec2, radius: f32) -> bool {
             if tx < 0 || tx >= MapWidth || ty < 0 || ty >= MapHeight {
                 return true
             }
-            if game_map.tiles[ty][tx] == .Wall {
+            if IsWall(game_map.tiles[ty][tx]) {
                 return true
             }
         }

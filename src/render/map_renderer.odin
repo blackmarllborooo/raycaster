@@ -11,9 +11,19 @@ DrawMap :: proc(game_map: ^world.Map, scale: f32 = 1, offset: geo.Vec2 = geo.Vec
 
     for y in 0..<world.MapHeight {
         for x in 0..<world.MapWidth {
-            title := game_map.tiles[y][x]
+            tile := game_map.tiles[y][x]
 
-            color := title == .Wall ? rl.GRAY : rl.DARKGRAY
+            color: rl.Color
+            switch tile {
+            case .Empty:
+                color = rl.DARKGRAY
+            case .WallBrick:
+                color = rl.MAROON
+            case .WallStone:
+                color = rl.GRAY
+            case .WallWood:
+                color = rl.BROWN
+            }
 
             // +1 to avoid rounding gaps between adjacent tiles
             rl.DrawRectangle(

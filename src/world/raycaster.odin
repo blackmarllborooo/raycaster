@@ -37,6 +37,9 @@ Ray :: struct {
     // Where the ray hit the wall face, as a fraction (0..1) along that face.
     // Used as the texture U coordinate.
     wall_x: f32,
+
+    // The type of tile that was hit, used to pick which texture to draw.
+    tile: Tile,
 }
 
 // CastRay fires a single ray from the player's position in the given
@@ -86,11 +89,14 @@ CastRay :: proc(p: ^Player, game_map: ^Map, direction: geo.Vec2) -> Ray {
         // walled on all borders so this should not normally happen.
         if ray.map_x < 0 || ray.map_x >= MapWidth || ray.map_y < 0 || ray.map_y >= MapHeight {
             ray.hit = true
+            ray.tile = .WallStone
             break
         }
 
-        if game_map.tiles[ray.map_y][ray.map_x] == .Wall {
+        tile := game_map.tiles[ray.map_y][ray.map_x]
+        if IsWall(tile) {
             ray.hit = true
+            ray.tile = tile
         }
     }
 
