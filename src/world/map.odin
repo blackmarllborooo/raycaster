@@ -1,5 +1,9 @@
 package world
 
+import geo "../geo"
+
+TileSize :: 50
+
 MapWidth :: 10
 MapHeight :: 10
 
@@ -37,4 +41,8 @@ NewMap :: proc() -> Map {
 	game_map.tiles[5][6] = .Wall
 
 	return game_map
+}
+
+WorldToTile :: proc(pos: geo.Vec2) -> (tx, ty: int) {
+    return int(pos.x / TileSize), int(pos.y / TileSize)
 }
