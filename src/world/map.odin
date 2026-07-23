@@ -14,8 +14,21 @@ Tile :: enum u8 {
 	WallWood,
 }
 
+// IsWall reports whether the tile blocks movement. Both solid walls and
+// waist-high fences are impassable on foot.
 IsWall :: proc(t: Tile) -> bool {
 	return t != .Empty
+}
+
+// IsSolid reports whether the tile is a full-height wall that stops a ray.
+IsSolid :: proc(t: Tile) -> bool {
+	return t == .WallBrick || t == .WallStone
+}
+
+// IsFence reports whether the tile is a waist-high fence: it blocks movement
+// but a ray passes over it, so the scene behind stays visible.
+IsFence :: proc(t: Tile) -> bool {
+	return t == .WallWood
 }
 
 

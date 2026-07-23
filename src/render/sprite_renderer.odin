@@ -119,14 +119,27 @@ drawSprite :: proc(p: ^world.Player, sprite: world.Sprite) {
 
     for x := start_x; x < end_x; x += 1 {
         if transform_y >= ZBuffer[x] {
-            continue // a wall is closer on this column
+            continue // a solid wall is closer on this column
+        }
+
+        // If a fence is closer than the sprite, it hides the sprite from its
+        // top edge down to the floor. Clip this column to whatever pokes up
+        // above the fence.
+        col_bottom := draw_bottom
+        if FenceDist[x] < transform_y && FenceTopY[x] < col_bottom {
+            col_bottom = FenceTopY[x]
+        }
+        if col_bottom <= draw_top {
+            continue // fully hidden behind the fence
         }
 
         tex_x := i32((f32(x) - draw_start_x_f) / sprite_w * f32(TextureSize))
         tex_x = clamp(tex_x, 0, TextureSize - 1)
 
-        source := rl.Rectangle{f32(tex_x), tex_v_top, 1, tex_v_bottom - tex_v_top}
-        dest := rl.Rectangle{f32(x), draw_top, 1, draw_bottom - draw_top}
+        col_tex_v_bottom := (col_bottom - draw_start_y_f) / sprite_h * f32(TextureSize)
+
+        source := rl.Rectangle{f32(tex_x), tex_v_top, 1, col_tex_v_bottom - tex_v_top}
+        dest := rl.Rectangle{f32(x), draw_top, 1, col_bottom - draw_top}
         rl.DrawTexturePro(SpriteTexture, source, dest, rl.Vector2{0, 0}, 0, tint)
     }
 }

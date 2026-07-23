@@ -7,107 +7,126 @@ import geo "../geo"
 // (i.e. the ray is exactly parallel to that axis and will never cross it).
 InfiniteDist :: f32(1e30)
 
-Ray :: struct {
-    // Direction of the ray (unit-ish vector, not normalized to 1)
-    direction: geo.Vec2,
+// Maximum number of fence tiles a single ray will render before it reaches a
+// solid wall. Anything past this is dropped (it would be tiny and occluded).
+MaxFences :: 8
 
-    // Current tile in the map that the ray is in
-    map_x, map_y: int,
-
-    // Step direction in x and y (either +1 or -1)
-    step_x, step_y: int,
-
-    // Distance (in tile units) from the ray start to the first x/y grid line
-    side_dist_x, side_dist_y: f32,
-
-    // Distance (in tile units) from one x/y grid line to the next
-    delta_dist_x, delta_dist_y: f32,
-
-    // true if the DDA loop stopped because it hit a wall
-    hit: bool,
-
-    // 0 if a vertical (x-side) wall was hit, 1 if a horizontal (y-side) wall was hit
+// Hit describes where a ray crossed into one wall or fence tile.
+Hit :: struct {
+    // 0 if a vertical (x-side) face was hit, 1 if a horizontal (y-side) face.
     side: int,
 
-    // Perpendicular distance (in tile units) from the player to the wall.
-    // This is fisheye-corrected and should be used for wall height, not the
-    // raw euclidean distance.
+    // Perpendicular (fisheye-corrected) distance to the face, in tile units.
     perp_wall_dist: f32,
 
-    // Where the ray hit the wall face, as a fraction (0..1) along that face.
-    // Used as the texture U coordinate.
+    // Where the ray crossed the face, as a fraction (0..1) along it. Used as
+    // the texture U coordinate.
     wall_x: f32,
 
-    // The type of tile that was hit, used to pick which texture to draw.
+    // The tile that was hit, used to pick the texture.
     tile: Tile,
 }
 
-// CastRay fires a single ray from the player's position in the given
-// direction and runs a DDA (Digital Differential Analysis) walk through the
-// grid until it hits a wall tile.
-CastRay :: proc(p: ^Player, game_map: ^Map, direction: geo.Vec2) -> Ray {
-    ray := Ray{}
-    ray.direction = direction
+// RayResult is the outcome of one cast: every fence passed through (nearest
+// first) plus the solid wall that finally stopped the ray.
+RayResult :: struct {
+    fences: [MaxFences]Hit,
+    fence_count: int,
+    solid: Hit,
+}
+
+// CastRay fires a single ray from the player's position and runs a DDA walk
+// through the grid. It records each waist-high fence it passes over and keeps
+// going until it reaches a full-height wall (or the map edge), so the caller
+// can draw the scene behind fences.
+CastRay :: proc(p: ^Player, game_map: ^Map, direction: geo.Vec2) -> RayResult {
+    result := RayResult{}
 
     pos_x := p.position.x / TileSize
     pos_y := p.position.y / TileSize
 
-    ray.map_x = int(pos_x)
-    ray.map_y = int(pos_y)
+    map_x := int(pos_x)
+    map_y := int(pos_y)
 
-    ray.delta_dist_x = ray.direction.x == 0 ? InfiniteDist : abs(1.0 / ray.direction.x)
-    ray.delta_dist_y = ray.direction.y == 0 ? InfiniteDist : abs(1.0 / ray.direction.y)
+    delta_dist_x := direction.x == 0 ? InfiniteDist : abs(1.0 / direction.x)
+    delta_dist_y := direction.y == 0 ? InfiniteDist : abs(1.0 / direction.y)
 
-    if ray.direction.x < 0 {
-        ray.step_x = -1
-        ray.side_dist_x = (pos_x - f32(ray.map_x)) * ray.delta_dist_x
+    step_x, step_y: int
+    side_dist_x, side_dist_y: f32
+
+    if direction.x < 0 {
+        step_x = -1
+        side_dist_x = (pos_x - f32(map_x)) * delta_dist_x
     } else {
-        ray.step_x = 1
-        ray.side_dist_x = (f32(ray.map_x + 1) - pos_x) * ray.delta_dist_x
+        step_x = 1
+        side_dist_x = (f32(map_x + 1) - pos_x) * delta_dist_x
     }
 
-    if ray.direction.y < 0 {
-        ray.step_y = -1
-        ray.side_dist_y = (pos_y - f32(ray.map_y)) * ray.delta_dist_y
+    if direction.y < 0 {
+        step_y = -1
+        side_dist_y = (pos_y - f32(map_y)) * delta_dist_y
     } else {
-        ray.step_y = 1
-        ray.side_dist_y = (f32(ray.map_y + 1) - pos_y) * ray.delta_dist_y
+        step_y = 1
+        side_dist_y = (f32(map_y + 1) - pos_y) * delta_dist_y
     }
 
-    for !ray.hit {
-        if ray.side_dist_x < ray.side_dist_y {
-            ray.side_dist_x += ray.delta_dist_x
-            ray.map_x += ray.step_x
-            ray.side = 0
+    for {
+        side: int
+        if side_dist_x < side_dist_y {
+            side_dist_x += delta_dist_x
+            map_x += step_x
+            side = 0
         } else {
-            ray.side_dist_y += ray.delta_dist_y
-            ray.map_y += ray.step_y
-            ray.side = 1
+            side_dist_y += delta_dist_y
+            map_y += step_y
+            side = 1
         }
 
-        // Out of bounds: treat as a hit so we never loop forever. The map is
-        // walled on all borders so this should not normally happen.
-        if ray.map_x < 0 || ray.map_x >= MapWidth || ray.map_y < 0 || ray.map_y >= MapHeight {
-            ray.hit = true
-            ray.tile = .WallStone
+        // Out of bounds: treat as a solid wall so the loop always terminates.
+        // The map is walled on all borders so this should not normally happen.
+        oob := map_x < 0 || map_x >= MapWidth || map_y < 0 || map_y >= MapHeight
+        tile := oob ? Tile.WallStone : game_map.tiles[map_y][map_x]
+
+        if oob || IsSolid(tile) {
+            result.solid = makeHit(
+                side, side_dist_x, side_dist_y, delta_dist_x, delta_dist_y,
+                pos_x, pos_y, direction, tile,
+            )
             break
         }
 
-        tile := game_map.tiles[ray.map_y][ray.map_x]
-        if IsWall(tile) {
-            ray.hit = true
-            ray.tile = tile
+        if IsFence(tile) && result.fence_count < MaxFences {
+            result.fences[result.fence_count] = makeHit(
+                side, side_dist_x, side_dist_y, delta_dist_x, delta_dist_y,
+                pos_x, pos_y, direction, tile,
+            )
+            result.fence_count += 1
         }
     }
 
-    if ray.side == 0 {
-        ray.perp_wall_dist = ray.side_dist_x - ray.delta_dist_x
-        ray.wall_x = pos_y + ray.perp_wall_dist * ray.direction.y
-    } else {
-        ray.perp_wall_dist = ray.side_dist_y - ray.delta_dist_y
-        ray.wall_x = pos_x + ray.perp_wall_dist * ray.direction.x
-    }
-    ray.wall_x -= math.floor(ray.wall_x)
+    return result
+}
 
-    return ray
+// makeHit computes the perpendicular distance and texture U for the tile the
+// DDA just stepped into.
+@(private)
+makeHit :: proc(
+    side: int,
+    side_dist_x, side_dist_y, delta_dist_x, delta_dist_y: f32,
+    pos_x, pos_y: f32,
+    direction: geo.Vec2,
+    tile: Tile,
+) -> Hit {
+    hit := Hit{side = side, tile = tile}
+
+    if side == 0 {
+        hit.perp_wall_dist = side_dist_x - delta_dist_x
+        hit.wall_x = pos_y + hit.perp_wall_dist * direction.y
+    } else {
+        hit.perp_wall_dist = side_dist_y - delta_dist_y
+        hit.wall_x = pos_x + hit.perp_wall_dist * direction.x
+    }
+
+    hit.wall_x -= math.floor(hit.wall_x)
+    return hit
 }
