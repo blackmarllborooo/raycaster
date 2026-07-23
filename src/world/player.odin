@@ -25,7 +25,11 @@ NewPlayer :: proc() -> Player {
     }
 }
 
-UpdatePlayer :: proc(p: ^Player, i: Input, dt: f32) {
+CollisionRadius :: proc(p: ^Player) -> f32 {
+    return p.size / 2
+}
+
+UpdatePlayer :: proc(p: ^Player, i: Input, game_map: ^Map, dt: f32) {
     movement := geo.Vec2{0,0}
 
     if i.up {
@@ -42,9 +46,19 @@ UpdatePlayer :: proc(p: ^Player, i: Input, dt: f32) {
     }
 
     movement = geo.Normalize(movement)
+    radius := CollisionRadius(p)
 
-    p.position.x += movement.x * p.speed * dt
-    p.position.y += movement.y * p.speed * dt
+    // Move along each axis independently so the player slides along walls
+    // instead of stopping dead on diagonal movement into a corner.
+    next_x := p.position.x + movement.x * p.speed * dt
+    if !IsBlocked(game_map, geo.Vec2{next_x, p.position.y}, radius) {
+        p.position.x = next_x
+    }
+
+    next_y := p.position.y + movement.y * p.speed * dt
+    if !IsBlocked(game_map, geo.Vec2{p.position.x, next_y}, radius) {
+        p.position.y = next_y
+    }
 
     rotation := f32(0)
     if i.rotate_left {

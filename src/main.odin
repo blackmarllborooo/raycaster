@@ -20,7 +20,7 @@ main :: proc() {
 
         input := world.ReadInput()
 
-        world.UpdatePlayer(&player, input, dt)
+        world.UpdatePlayer(&player, input, &game_map, dt)
 
         if rl.IsKeyPressed(.TAB) {
             show_map = !show_map

@@ -46,3 +46,25 @@ NewMap :: proc() -> Map {
 WorldToTile :: proc(pos: geo.Vec2) -> (tx, ty: int) {
     return int(pos.x / TileSize), int(pos.y / TileSize)
 }
+
+// IsBlocked reports whether a circle of the given radius centered at pos
+// overlaps a wall tile or the outside of the map.
+IsBlocked :: proc(game_map: ^Map, pos: geo.Vec2, radius: f32) -> bool {
+    min_tx := int((pos.x - radius) / TileSize)
+    max_tx := int((pos.x + radius) / TileSize)
+    min_ty := int((pos.y - radius) / TileSize)
+    max_ty := int((pos.y + radius) / TileSize)
+
+    for ty in min_ty..=max_ty {
+        for tx in min_tx..=max_tx {
+            if tx < 0 || tx >= MapWidth || ty < 0 || ty >= MapHeight {
+                return true
+            }
+            if game_map.tiles[ty][tx] == .Wall {
+                return true
+            }
+        }
+    }
+
+    return false
+}
